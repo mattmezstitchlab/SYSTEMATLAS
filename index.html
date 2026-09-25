@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WWC + AIME — System Architecture Map</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0a0a0b;--surface:#111113;--border:#1e1e22;--text:#e8e8ec;--muted:#6b6b76;
+--dim:#3a3a44;--white:#f5f5f7;--fuchsia:#e91e8c;--fuchsia-dim:rgba(233,30,140,0.15);
+--accent:#c8c8d0;--panel-w:340px;--ease:cubic-bezier(0.22,1,0.36,1)
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+font-family:'IBM Plex Sans',system-ui,sans-serif;font-weight:300;-webkit-font-smoothing:antialiased}
+#canvas-container{position:fixed;inset:0;z-index:0}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;inset:0;z-index:10;pointer-events:none}
+#hud>*{pointer-events:auto}
+.top-bar{position:absolute;top:0;left:0;right:0;height:56px;display:flex;align-items:center;
+justify-content:space-between;padding:0 28px;border-bottom:1px solid var(--border);
+background:rgba(10,10,11,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-mark{width:18px;height:18px;border-radius:50%;background:var(--white);
+box-shadow:0 0 12px rgba(255,255,255,0.3)}
+.logo-text{font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:500;color:var(--white)}
+.logo-sub{font-size:10px;letter-spacing:0.12em;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.top-actions{display:flex;gap:8px;align-items:center}
+.btn{height:30px;padding:0 14px;border:1px solid var(--border);background:transparent;color:var(--muted);
+font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;
+cursor:pointer;transition:all 0.25s var(--ease);border-radius:2px}
+.btn:hover{border-color:var(--dim);color:var(--text);background:rgba(255,255,255,0.03)}
+.btn.active{border-color:var(--white);color:var(--white);background:rgba(255,255,255,0.06)}
+.btn-fuchsia{border-color:rgba(233,30,140,0.4);color:var(--fuchsia)}
+.btn-fuchsia:hover,.btn-fuchsia.active{border-color:var(--fuchsia);background:var(--fuchsia-dim)}
+#side-panel{position:absolute;top:56px;right:0;width:var(--panel-w);bottom:0;
+background:rgba(11,11,13,0.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+border-left:1px solid var(--border);transform:translateX(100%);transition:transform 0.45s var(--ease);
+display:flex;flex-direction:column;overflow:hidden}
+#side-panel.open{transform:translateX(0)}
+.panel-header{padding:24px 24px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;
+text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.panel-title{font-size:18px;font-weight:400;letter-spacing:0.04em;color:var(--white);line-height:1.3}
+.panel-close{position:absolute;top:20px;right:20px;width:28px;height:28px;border:1px solid var(--border);
+background:transparent;color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;
+justify-content:center;border-radius:2px;transition:all 0.2s}
+.panel-close:hover{color:var(--white);border-color:var(--dim)}
+.panel-body{flex:1;overflow-y:auto;padding:20px 24px;scrollbar-width:thin;scrollbar-color:var(--dim) transparent}
+.panel-section{margin-bottom:28px}
+.panel-section h4{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.18em;
+text-transform:uppercase;color:var(--muted);margin-bottom:12px;font-weight:400}
+.panel-section p{font-size:13px;line-height:1.7;color:var(--accent);font-weight:300}
+.meta-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(30,30,34,0.8)}
+.meta-key{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.08em}
+.meta-val{font-size:12px;color:var(--text);font-weight:400}
+.conn-list{list-style:none}
+.conn-list li{padding:6px 0;font-size:12px;color:var(--accent);display:flex;align-items:center;gap:8px;
+font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.04em}
+.conn-dot{width:4px;height:4px;border-radius:50%;background:var(--white);flex-shrink:0}
+.conn-dot.fuchsia{background:var(--fuchsia)}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:48px;display:flex;align-items:center;
+justify-content:space-between;padding:0 28px;border-top:1px solid var(--border);
+background:rgba(10,10,11,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.tagline{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.22em;
+text-transform:uppercase;color:var(--muted)}
+.tagline em{font-style:normal;color:var(--white)}
+.controls-hint{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;color:var(--dim)}
+#legend{position:absolute;bottom:64px;left:28px;display:flex;flex-direction:column;gap:6px}
+.legend-item{display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;
+font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)}
+.legend-swatch{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#audit-bar{position:absolute;top:72px;left:50%;transform:translateX(-50%);display:none;
+gap:6px;padding:6px;background:rgba(11,11,13,0.9);border:1px solid var(--border);border-radius:3px;
+backdrop-filter:blur(12px)}
+#audit-bar.visible{display:flex}
+.audit-btn{height:26px;padding:0 12px;border:none;background:transparent;color:var(--muted);
+font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;
+cursor:pointer;border-radius:2px;transition:all 0.2s}
+.audit-btn:hover,.audit-btn.active{background:rgba(255,255,255,0.06);color:var(--white)}
+#tooltip{position:absolute;padding:8px 14px;background:rgba(11,11,13,0.95);border:1px solid var(--border);
+font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;
+color:var(--white);pointer-events:none;opacity:0;transition:opacity 0.15s;white-space:nowrap;
+border-radius:2px;z-index:20;backdrop-filter:blur(8px)}
+#tooltip.visible{opacity:1}
+#loader{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
+align-items:center;justify-content:center;transition:opacity 0.8s var(--ease)}
+#loader.done{opacity:0;pointer-events:none}
+.loader-mark{width:24px;height:24px;border-radius:50%;background:var(--white);margin-bottom:28px;
+animation:pulse 1.6s ease-in-out infinite}
+.loader-text{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.25em;
+text-transform:uppercase;color:var(--muted)}
+@keyframes pulse{0%,100%{opacity:0.3;transform:scale(0.9)}50%{opacity:1;transform:scale(1)}}
+#depth-nav{position:absolute;top:72px;left:28px;display:none;flex-direction:column;gap:4px}
+#depth-nav.visible{display:flex}
+.depth-btn{height:28px;padding:0 12px;border:1px solid var(--border);background:rgba(11,11,13,0.8);
+color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;
+text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;text-align:left}
+.depth-btn:hover{color:var(--white);border-color:var(--dim)}
+.depth-btn.active{color:var(--white);border-color:var(--white)}
+#minimap{position:absolute;bottom:64px;right:28px;width:120px;height:120px;border:1px solid var(--border);
+background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:blur(8px)}
+#minimap canvas{width:100%;height:100%}
+@media(max-width:768px){
+:root{--panel-w:100%}
+.top-bar{padding:0 16px}
+.bottom-bar,.controls-hint{display:none}
+#legend{display:none}
+#minimap{display:none}
+.tagline{font-size:8px;letter-spacing:0.12em}
+#bottom-bar{padding:0 16px;justify-content:center}
+.controls-hint{display:none}
+}
+</style>
+</head>
+<body>
+<div id="loader"><div class="loader-mark"></div><div class="loader-text">Initializing Architecture</div></div>
+<div id="canvas-container"></div>
+<div id="hud">
+<div class="top-bar">
+<div class="logo">
+<div class="logo-mark"></div>
+<div>
+<div class="logo-text">World Wedding Center</div>
+<div class="logo-sub">System Architecture + AIME</div>
+</div>
+</div>
+<div class="top-actions">
+<button class="btn" id="btn-audit" onclick="toggleAudit()">Audit</button>
+<button class="btn" id="btn-grid" onclick="toggleGrid()">Grid</button>
+<button class="btn" id="btn-conn" onclick="toggleConnections()">Links</button>
+<button class="btn btn-fuchsia" id="btn-aime" onclick="focusAime()">AIME</button>
+<button class="btn" id="btn-reset" onclick="resetCamera()">Reset</button>
+</div>
+</div>
+<div id="audit-bar">
+<button class="audit-btn active" data-mode="all" onclick="setAuditMode('all')">All Layers</button>
+<button class="audit-btn" data-mode="structure" onclick="setAuditMode('structure')">Structure</button>
+<button class="audit-btn" data-mode="data" onclick="setAuditMode('data')">Data Flow</button>
+<button class="audit-btn" data-mode="people" onclick="setAuditMode('people')">People</button>
+<button class="audit-btn" data-mode="time" onclick="setAuditMode('time')">Time</button>
+<button class="audit-btn" data-mode="values" onclick="setAuditMode('values')">Values</button>
+</div>
+<div id="depth-nav">
+<button class="depth-btn active" data-depth="0" onclick="setDepth(0)">Surface</button>
+<button class="depth-btn" data-depth="1" onclick="setDepth(1)">Identity</button>
+<button class="depth-btn" data-depth="2" onclick="setDepth(2)">Traces</button>
+<button class="depth-btn" data-depth="3" onclick="setDepth(3)">Core</button>
+</div>
+<div id="legend">
+<div class="legend-item"><div class="legend-swatch" style="background:#f5f5f7"></div>Source of Truth</div>
+<div class="legend-item"><div class="legend-swatch" style="background:#e91e8c"></div>AIME Presence</div>
+<div class="legend-item"><div class="legend-swatch" style="background:#4a4a55"></div>System Node</div>
+<div class="legend-item"><div class="legend-swatch" style="background:#2a2a33"></div>365 Destinations</div>
+</div>
+<div id="minimap"></div>
+<div id="side-panel">
+<button class="panel-close" onclick="closePanel()">&#x2715;</button>
+<div class="panel-header">
+<div class="panel-label" id="panel-label">System</div>
+<div class="panel-title" id="panel-title">—</div>
+</div>
+<div class="panel-body" id="panel-body"></div>
+</div>
+<div id="tooltip"></div>
+<div id="bottom-bar">
+<div class="tagline"><em>One World</em>&nbsp;&nbsp;·&nbsp;&nbsp;<em>One Grid</em>&nbsp;&nbsp;·&nbsp;&nbsp;<em>Many Views</em></div>
+<div class="controls-hint">DRAG orbit · SCROLL zoom · RIGHT-DRAG pan · CLICK inspect · Keys 1-9 focus</div>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+'use strict';
+
+const SYSTEMS = [
+{id:'world',name:'WORLD',full:'World Layer',desc:'The planetary substrate. Geographic, cultural and ceremonial territories forming the continuous field upon which all editions unfold. One world as shared ground.',category:'structure',color:0x8a8a96,pos:[0,0,28],connections:['grid','editions','relations','timeline']},
+{id:'editions',name:'365 EDITIONS',full:'365 Editions Cycle',desc:'A complete annual cycle of ceremonial editions. Each point is a destination, a date, a unique configuration of people, place and ritual. Geometrically stable 1:1 mapping.',category:'time',color:0x7a7a88,pos:[24,8,12],connections:['world','timeline','music','archive','grid']},
+{id:'myspace',name:'MY SPACE',full:'My Space — Digital Sampler',desc:'Personal digital sampler. A private compositional surface where individuals collect, arrange and transmit fragments of ceremony, memory and meaning. Depth-navigable identity vessel.',category:'people',color:0x9a9aa4,pos:[-22,6,14],connections:['mirrors','relations','value','transmission','aime']},
+{id:'grid',name:'UNIVERSAL GRID',full:'Universal Grid',desc:'The coordinate system binding all entities. A shared spatial-semantic index enabling any point to address any other. Structure without hierarchy.',category:'structure',color:0x6a6a78,pos:[0,-18,16],connections:['world','editions','archive','mirrors','relations']},
+{id:'mirrors',name:'MIRRORS',full:'Mirror System',desc:'Reflective surfaces between public and private, between edition and individual, between what is shown and what is held. Dual visibility architecture.',category:'data',color:0x8a8a98,pos:[-18,12,-16],connections:['myspace','aime','relations','grid']},
+{id:'relations',name:'RELATIONS',full:'Relation Graph',desc:'The living network of bonds between people, places, editions and values. Not a social graph — a ceremonial topology of meaningful connection.',category:'people',color:0x7a7a86,pos:[20,10,-14],connections:['world','myspace','mirrors','value','transmission']},
+{id:'timeline',name:'TIMELINE',full:'Temporal Structure',desc:'Circular 24-hour ceremonial clock nested within the 365-day annual ring. Time as architecture: hours as chambers, days as rooms, years as buildings.',category:'time',color:0x6a6a76,pos:[16,-10,-18],connections:['editions','world','music','archive']},
+{id:'music',name:'MUSIC',full:'Sonic Layer',desc:'The acoustic dimension of ceremony. Scores, ambient fields, transmission frequencies. Music as temporal glue binding moments across the grid.',category:'data',color:0x8a8a94,pos:[-14,-8,-20],connections:['editions','timeline','transmission','value']},
+{id:'value',name:'VALUE',full:'Value System',desc:'The ethical and economic substrate. What is exchanged, gifted, held, released. Values as vectors — direction and magnitude of meaning.',category:'values',color:0x7a7a84,pos:[-20,-12,8],connections:['myspace','relations','archive','aime','transmission']},
+{id:'archive',name:'ARCHIVE',full:'Living Archive',desc:'Not storage — sedimentation. Traces of every edition, every gesture, every transmission accumulate into a readable geological record of the system.',category:'data',color:0x6a6a74,pos:[18,-14,6],connections:['editions','grid','timeline','value','transmission']},
+{id:'transmission',name:'TRANSMISSION',full:'Transmission Protocol',desc:'How signal moves. Between people, across editions, through time. The protocols of sending and receiving ceremonial information.',category:'data',color:0x8a8a92,pos:[12,16,-8],connections:['myspace','relations','music','archive','aime']},
+{id:'aime',name:'AIME',full:'AIME Presence',desc:'A fuchsia presence within the architecture. Not authority, not center — a companion intelligence that reads, suggests, connects and cares. Distinct from the white point of truth. AIME is relational, not sovereign.',category:'values',color:0xe91e8c,pos:[0,22,0],connections:['myspace','mirrors','value','transmission'],isAime:true}
+];
+
+const LANG_LAYERS = [
+{name:'Signal',desc:'Raw presence — the fact of being addressable'},
+{name:'Symbol',desc:'Shared marks — glyphs that carry agreed meaning'},
+{name:'Syntax',desc:'Structure rules — how symbols compose'},
+{name:'Semantics',desc:'Meaning fields — what compositions signify'},
+{name:'Pragmatics',desc:'Contextual use — meaning in situation'},
+{name:'Ceremony',desc:'Sacred register — the highest language layer'}
+];
+
+let scene,camera,renderer,controls,clock;
+let coreGroup,systemsGroup,grid365Group,connectionsGroup,langGroup,aimeGroup,samplerGroup;
+let raycaster,mouse,hoveredObj=null,selectedObj=null;
+let connectionLines=[],systemMeshes={},labelSprites=[];
+let showConnections=true,showGrid=true,auditMode='all',currentDepth=0;
+let animPhase=0,isAuditOpen=false;
+const panelData={};
+
+function init(){
+const container=document.getElementById('canvas-container');
+clock=new THREE.Clock();
+scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0a0a0b);
+scene.fog=new THREE.FogExp2(0x0a0a0b,0.012);
+
+camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.1,500);
+camera.position.set(40,30,50);
+
+renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.1;
+container.appendChild(renderer.domElement);
+
+controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=0.06;
+controls.minDistance=8;
+controls.maxDistance=120;
+controls.maxPolarAngle=Math.PI*0.85;
+controls.target.set(0,0,0);
+controls.autoRotate=true;
+controls.autoRotateSpeed=0.3;
+
+raycaster=new THREE.Raycaster();
+mouse=new THREE.Vector2(-999,-999);
+
+setupLights();
+buildCore();
+buildSystems();
+build365Grid();
+buildConnections();
+buildLanguageLayers();
+buildMySpaceSampler();
+buildUniversalPoint();
+buildAimePresence();
+buildTimelineRing();
+buildFloor();
+buildMinimap();
+
+window.addEventListener('resize',onResize);
+renderer.domElement.addEventListener('pointermove',onPointerMove);
+renderer.domElement.addEventListener('pointerdown',onPointerDown);
+window.addEventListener('keydown',onKey);
+document.getElementById('side-panel').addEventListener('click',e=>e.stopPropagation());
+
+setTimeout(()=>{
+document.getElementById('loader').classList.add('done');
+},1200);
+animate();
+}
+
+function setupLights(){
+const amb=new THREE.AmbientLight(0x3a3a44,0.6);
+scene.add(amb);
+const key=new THREE.DirectionalLight(0xffffff,0.5);
+key.position.set(30,40,20);
+scene.add(key);
+const fill=new THREE.DirectionalLight(0x8888aa,0.25);
+fill.position.set(-20,10,-30);
+scene.add(fill);
+const coreLight=new THREE.PointLight(0xffffff,1.2,40);
+coreLight.position.set(0,0,0);
+scene.add(coreLight);
+const aimeLight=new THREE.PointLight(0xe91e8c,0.8,35);
+aimeLight.position.set(0,22,0);
+aimeLight.name='aimeLight';
+scene.add(aimeLight);
+const rim=new THREE.PointLight(0xaaaa cc,0.3,60);
+rim.position.set(-30,5,30);
+scene.add(rim);
+}
+
+function buildCore(){
+coreGroup=new THREE.Group();
+coreGroup.name='core';
+const geo=new THREE.IcosahedronGeometry(2.2,2);
+const mat=new THREE.MeshStandardMaterial({
+color:0xffffff,emissive:0xffffff,emissiveIntensity:0.35,
+roughness:0.15,metalness:0.3,transparent:true,opacity:0.92
+});
+const core=new THREE.Mesh(geo,mat);
+core.userData={id:'ust',name:'UNIVERSAL SOURCE OF TRUTH',full:'Universal Source of Truth',
+desc:'The white nucleus. Minimal, architectural, non-hierarchical. The single point of coherence from which all systems derive addressability. Not a database — a principle of unity. One truth, many views.',
+category:'structure',isCore:true};
+coreGroup.add(core);
+
+const wireGeo=new THREE.IcosahedronGeometry(2.6,1);
+const wireMat=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:0.08});
+coreGroup.add(new THREE.Mesh(wireGeo,wireMat));
+
+const ringGeo=new THREE.TorusGeometry(3.4,0.015,8,64);
+const ringMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.15});
+const ring1=new THREE.Mesh(ringGeo,ringMat);
+ring1.rotation.x=Math.PI/2;
+coreGroup.add(ring1);
+const ring2=new THREE.Mesh(ringGeo,ringMat.clone());
+ring2.rotation.x=Math.PI/3;
+ring2.rotation.y=Math.PI/4;
+coreGroup.add(ring2);
+const ring3=new THREE.Mesh(ringGeo,ringMat.clone());
+ring3.rotation.x=-Math.PI/3;
+ring3.rotation.z=Math.PI/5;
+coreGroup.add(ring3);
+
+const glowGeo=new THREE.SphereGeometry(3.8,32,32);
+const glowMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.03,side:THREE.BackSide});
+coreGroup.add(new THREE.Mesh(glowGeo,glowMat));
+
+scene.add(coreGroup);
+systemMeshes['ust']=core;
+}
+
+function buildSystems(){
+systemsGroup=new THREE.Group();
+systemsGroup.name='systems';
+SYSTEMS.forEach((sys,i)=>{
+const group=new THREE.Group();
+group.position.set(...sys.pos);
+group.userData=sys;
+
+let mesh;
+if(sys.isAime){
+const geo=new THREE.OctahedronGeometry(1.6,0);
+const mat=new THREE.MeshStandardMaterial({
+color:0xe91e8c,emissive:0xe91e8c,emissiveIntensity:0.4,
+roughness:0.3,metalness:0.5,transparent:true,opacity:0.85
+});
+mesh=new THREE.Mesh(geo,mat);
+const aura=new THREE.Mesh(
+new THREE.SphereGeometry(2.8,16,16),
+new THREE.MeshBasicMaterial({color:0xe91e8c,transparent:true,opacity:0.06,side:THREE.BackSide})
+);
+group.add(aura);
+const innerWire=new THREE.Mesh(
+new THREE.OctahedronGeometry(2.0,0),
+new THREE.MeshBasicMaterial({color:0xe91e8c,wireframe:true,transparent:true,opacity:0.2})
+);
+group.add(innerWire);
+}else{
+const shapes=[
+()=>new THREE.BoxGeometry(1.8,1.8,1.8),
+()=>new THREE.OctahedronGeometry(1.3,0),
+()=>new THREE.TetrahedronGeometry(1.5,0),
+()=>new THREE.DodecahedronGeometry(1.2,0),
+()=>new THREE.IcosahedronGeometry(1.3,0),
+()=>new THREE.CylinderGeometry(0.8,0.8,1.8,6),
+()=>new THREE.ConeGeometry(1.1,1.8,5),
+()=>new THREE.TorusGeometry(0.9,0.35,8,16),
+()=>new THREE.BoxGeometry(1.5,2.2,1.0),
+()=>new THREE.OctahedronGeometry(1.4,1),
+()=>new THREE.DodecahedronGeometry(1.1,0)
+];
+const geo=shapes[i%shapes.length]();
+const mat=new THREE.MeshStandardMaterial({
+color:sys.color,emissive:sys.color,emissiveIntensity:0.08,
+roughness:0.45,metalness:0.35,transparent:true,opacity:0.88
+});
+mesh=new THREE.Mesh(geo,mat);
+const frame=new THREE.Mesh(geo.clone(),
+new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:0.06}));
+frame.scale.setScalar(1.15);
+group.add(frame);
+}
+
+mesh.userData=sys;
+group.add(mesh);
+
+const labelCanvas=createLabel(sys.name,sys.isAime);
+const labelTex=new THREE.CanvasTexture(labelCanvas);
+const labelMat=new THREE.SpriteMaterial({map:labelTex,transparent:true,opacity:0.7,depthTest:false});
+const label=new THREE.Sprite(labelMat);
+label.scale.set(6,1.5,1);
+label.position.y=sys.isAime?3.2:2.6;
+label.userData={isLabel:true};
+group.add(label);
+labelSprites.push(label);
+
+const hitGeo=new THREE.SphereGeometry(2.5,8,8);
+const hitMat=new THREE.MeshBasicMaterial({visible:false});
+const hitMesh=new THREE.Mesh(hitGeo,hitMat);
+hitMesh.userData=sys;
+group.add(hitMesh);
+
+systemsGroup.add(group);
+systemMeshes[sys.id]=group;
+});
+scene.add(systemsGroup);
+}
+
+function createLabel(text,isAime){
+const canvas=document.createElement('canvas');
+canvas.width=512;canvas.height=128;
+const ctx=canvas.getContext('2d');
+ctx.clearRect(0,0,512,128);
+ctx.font='500 28px IBM Plex Mono, monospace';
+ctx.fillStyle=isAime?'#e91e8c':'#8a8a96';
+ctx.textAlign='center';
+ctx.textBaseline='middle';
+ctx.fillText(text,256,64);
+return canvas;
+}
+
+function build365Grid(){
+grid365Group=new THREE.Group();
+grid365Group.name='grid365';
+const golden=Math.PI*(3-Math.sqrt(5));
+const radius=36;
+const positions=[];
+const colors=[];
+const colorDest=new THREE.Color(0x3a3a48);
+const colorEdition=new THREE.Color(0x5a5a6a);
+
+for(let i=0;i<365;i++){
+const y=1-(i/364)*2;
+const r=Math.sqrt(1-y*y);
+const theta=golden*i;
+const x=Math.cos(theta)*r;
+const z=Math.sin(theta)*r;
+positions.push(x*radius,y*radius,z*radius);
+const c=i%30===0?colorEdition:colorDest;
+colors.push(c.r,c.g,c.b);
+}
+
+const geo=new THREE.BufferGeometry();
+geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+const mat=new THREE.PointsMaterial({
+size:0.28,vertexColors:true,transparent:true,opacity:0.7,
+sizeAttenuation:true,depthWrite:false
+});
+const points=new THREE.Points(geo,mat);
+points.userData={id:'destinations',name:'365 DESTINATIONS',full:'365 Destination Sphere',
+desc:'A geometrically stable sphere of 365 fixed points. Each point is a ceremonial destination — place and date fused. Format 1:1 respected. These points do not drift. They are the calendar made spatial.',
+category:'time'};
+grid365Group.add(points);
+
+const equatorGeo=new THREE.TorusGeometry(radius,0.02,8,128);
+const equatorMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.04});
+const equator=new THREE.Mesh(equatorGeo,equatorMat);
+equator.rotation.x=Math.PI/2;
+grid365Group.add(equator);
+
+const meridianGeo=new THREE.TorusGeometry(radius,0.015,8,128);
+const meridianMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.025});
+for(let m=0;m<3;m++){
+const mer=new THREE.Mesh(meridianGeo,meridianMat);
+mer.rotation.y=(Math.PI/3)*m;
+grid365Group.add(mer);
+}
+
+scene.add(grid365Group);
+systemMeshes['destinations']=points;
+}
+
+function buildConnections(){
+connectionsGroup=new THREE.Group();
+connectionsGroup.name='connections';
+const linked=new Set();
+
+SYSTEMS.forEach(sys=>{
+sys.connections.forEach(targetId=>{
+const key=[sys.id,targetId].sort().join('-');
+if(linked.has(key))return;
+linked.add(key);
+const target=SYSTEMS.find(s=>s.id===targetId);
+if(!target)return;
+const points=createCurve(sys.pos,target.pos);
+const geo=new THREE.BufferGeometry().setFromPoints(points);
+const isAimeConn=sys.isAime||(target&&target.isAime);
+const mat=new THREE.LineBasicMaterial({
+color:isAimeConn?0xe91e8c:0xffffff,
+transparent:true,
+opacity:isAimeConn?0.12:0.06
+});
+const line=new THREE.Line(geo,mat);
+line.userData={from:sys.id,to:targetId,isAimeConn};
+connectionsGroup.add(line);
+connectionLines.push(line);
+});
+});
+
+SYSTEMS.forEach(sys=>{
+const points=createCurve(sys.pos,[0,0,0]);
+const geo=new THREE.BufferGeometry().setFromPoints(points);
+const mat=new THREE.LineBasicMaterial({
+color:sys.isAime?0xe91e8c:0xffffff,
+transparent:true,
+opacity:sys.isAime?0.15:0.04
+});
+const line=new THREE.Line(geo,mat);
+line.userData={from:sys.id,to:'ust',isCore:true};
+connectionsGroup.add(line);
+connectionLines.push(line);
+});
+
+scene.add(connectionsGroup);
+}
+
+function createCurve(from,to){
+const v1=new THREE.Vector3(...from);
+const v2=new THREE.Vector3(...to);
+const mid=v1.clone().add(v2).multiplyScalar(0.5);
+const dist=v1.distanceTo(v2);
+mid.normalize().multiplyScalar(mid.length()+dist*0.15);
+const curve=new THREE.QuadraticBezierCurve3(v1,mid,v2);
+return curve.getPoints(24);
+}
+
+function buildLanguageLayers(){
+langGroup=new THREE.Group();
+langGroup.name='language';
+langGroup.position.set(-30,0,-28);
+LANG_LAYERS.forEach((layer,i)=>{
+const y=i*1.6-4;
+const size=1.2+i*0.35;
+const geo=new THREE.RingGeometry(size*0.7,size,6);
+const mat=new THREE.MeshBasicMaterial({
+color:0xffffff,transparent:true,opacity:0.04+i*0.015,
+side:THREE.DoubleSide
+});
+const ring=new THREE.Mesh(geo,mat);
+ring.position.y=y;
+ring.rotation.x=Math.PI/2;
+ring.userData={id:'lang-'+i,name:layer.name,full:'Language Layer: '+layer.name,
+desc:layer.desc+'. Part of the Universal Language stack — six ascending registers from raw signal to ceremony.',
+category:'structure',layer:i};
+langGroup.add(ring);
+
+const plateGeo=new THREE.CircleGeometry(size*0.65,6);
+const plateMat=new THREE.MeshBasicMaterial({
+color:0xffffff,transparent:true,opacity:0.015+i*0.008,
+side:THREE.DoubleSide
+});
+const plate=new THREE.Mesh(plateGeo,plateMat);
+plate.position.y=y;
+plate.rotation.x=-Math.PI/2;
+plate.userData=ring.userData;
+langGroup.add(plate);
+});
+
+const axisGeo=new THREE.CylinderGeometry(0.02,0.02,12,6);
+const axisMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.08});
+const axis=new THREE.Mesh(axisGeo,axisMat);
+axis.position.y=0;
+langGroup.add(axis);
+
+const langLabel=createLabel('UNIVERSAL LANGUAGE',false);
+const langTex=new THREE.CanvasTexture(langLabel);
+const langSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:langTex,transparent:true,opacity:0.5,depthTest:false}));
+langSprite.scale.set(8,2,1);
+langSprite.position.y=7;
+langGroup.add(langSprite);
+
+scene.add(langGroup);
+}
+
+function buildMySpaceSampler(){
+samplerGroup=new THREE.Group();
+samplerGroup.name='sampler';
+samplerGroup.position.set(-22,6,14);
+
+const baseGeo=new THREE.BoxGeometry(3.5,0.15,3.5);
+const baseMat=new THREE.MeshStandardMaterial({color:0x1a1a20,roughness:0.6,metalness:0.4,transparent:true,opacity:0.7});
+samplerGroup.add(new THREE.Mesh(baseGeo,baseMat));
+
+for(let r=0;r<4;r++){
+for(let c=0;c<4;c++){
+const cellGeo=new THREE.BoxGeometry(0.65,0.08,0.65);
+const bright=0.1+Math.random()*0.15;
+const cellMat=new THREE.MeshStandardMaterial({
+color:new THREE.Color(bright,bright,bright+0.02),
+emissive:new THREE.Color(bright*0.3,bright*0.3,bright*0.4),
+emissiveIntensity:0.3,roughness:0.3,metalness:0.5,transparent:true,opacity:0.8
+});
+const cell=new THREE.Mesh(cellGeo,cellMat);
+cell.position.set((c-1.5)*0.8,0.15,(r-1.5)*0.8);
+cell.userData={isSamplerCell:true,row:r,col:c};
+samplerGroup.add(cell);
+}
+}
+
+const frameGeo=new THREE.EdgesGeometry(new THREE.BoxGeometry(3.7,0.5,3.7));
+const frameMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.1});
+const frame=new THREE.LineSegments(frameGeo,frameMat);
+frame.position.y=0.1;
+samplerGroup.add(frame);
+
+scene.add(samplerGroup);
+}
+
+function buildUniversalPoint(){
+const upGroup=new THREE.Group();
+upGroup.name='universalPoint';
+upGroup.position.set(0,0,0);
+
+const pGeo=new THREE.SphereGeometry(0.35,16,16);
+const pMat=new THREE.MeshStandardMaterial({
+color:0xffffff,emissive:0xffffff,emissiveIntensity:0.6,
+roughness:0.1,metalness:0.2
+});
+const point=new THREE.Mesh(pGeo,pMat);
+point.userData={id:'upoint',name:'UNIVERSAL POINT',full:'Universal Point — Personal Core',
+desc:'The small white point. Contains personal information navigable in depth: Surface → Identity → Traces → Core. Each person is a Universal Point. Distinct from AIME. This is you — addressable, sovereign, minimal.',
+category:'people',isUniversalPoint:true,hasDepth:true};
+upGroup.add(point);
+
+for(let d=1;d<=3;d++){
+const shellGeo=new THREE.SphereGeometry(0.35+d*0.5,16,16);
+const shellMat=new THREE.MeshBasicMaterial({
+color:0xffffff,wireframe:true,transparent:true,opacity:0.04-d*0.008
+});
+const shell=new THREE.Mesh(shellGeo,shellMat);
+shell.userData={depthShell:d};
+upGroup.add(shell);
+}
+
+scene.add(upGroup);
+systemMeshes['upoint']=point;
+}
+
+function buildAimePresence(){
+aimeGroup=new THREE.Group();
+aimeGroup.name='aimePresence';
+const particles=200;
+const pos=new Float32Array(particles*3);
+const cols=new Float32Array(particles*3);
+const fc=new THREE.Color(0xe91e8c);
+for(let i=0;i<particles;i++){
+const theta=Math.random()*Math.PI*2;
+const phi=Math.acos(2*Math.random()-1);
+const r=3+Math.random()*4;
+pos[i*3]=Math.sin(phi)*Math.cos(theta)*r;
+pos[i*3+1]=22+Math.sin(phi)*Math.sin(theta)*r*0.6;
+pos[i*3+2]=Math.cos(phi)*r;
+cols[i*3]=fc.r;cols[i*3+1]=fc.g;cols[i*3+2]=fc.b;
+}
+const pGeo=new THREE.BufferGeometry();
+pGeo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+pGeo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+const pMat=new THREE.PointsMaterial({
+size:0.12,vertexColors:true,transparent:true,opacity:0.5,
+depthWrite:false,sizeAttenuation:true
+});
+aimeGroup.add(new THREE.Points(pGeo,pMat));
+scene.add(aimeGroup);
+}
+
+function buildTimelineRing(){
+const tlGroup=new THREE.Group();
+tlGroup.name='timelineRing';
+tlGroup.position.set(16,-10,-18);
+
+const ringGeo=new THREE.TorusGeometry(4.5,0.03,8,64);
+const ringMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.12});
+tlGroup.add(new THREE.Mesh(ringGeo,ringMat));
+
+for(let h=0;h<24;h++){
+const angle=(h/24)*Math.PI*2;
+const x=Math.cos(angle)*4.5;
+const z=Math.sin(angle)*4.5;
+const isMajor=h%6===0;
+const mkGeo=new THREE.SphereGeometry(isMajor?0.12:0.06,6,6);
+const mkMat=new THREE.MeshBasicMaterial({
+color:0xffffff,transparent:true,opacity:isMajor?0.4:0.15
+});
+const mk=new THREE.Mesh(mkGeo,mkMat);
+mk.position.set(x,0,z);
+mk.userData={hour:h,id:'hour-'+h,name:'HOUR '+String(h).padStart(2,'0'),
+full:'Ceremonial Hour '+h,desc:'Hour '+h+' of the 24-hour ceremonial clock. '+(isMajor?'Major temporal marker. ':'')+'Nested within the 365-day annual structure.',
+category:'time'};
+tlGroup.add(mk);
+}
+
+const yearRing=new THREE.TorusGeometry(6.5,0.015,8,128);
+const yearMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.05});
+const yr=new THREE.Mesh(yearRing,yearMat);
+yr.rotation.x=Math.PI/6;
+tlGroup.add(yr);
+
+scene.add(tlGroup);
+}
+
+function buildFloor(){
+const gridHelper=new THREE.GridHelper(100,50,0x1a1a20,0x121216);
+gridHelper.position.y=-30;
+gridHelper.material.transparent=true;
+gridHelper.material.opacity=0.3;
+scene.add(gridHelper);
+
+const discGeo=new THREE.RingGeometry(38,42,64);
+const discMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.015,side:THREE.DoubleSide});
+const disc=new THREE.Mesh(discGeo,discMat);
+disc.rotation.x=-Math.PI/2;
+disc.position.y=-29.9;
+scene.add(disc);
+}
+
+function buildMinimap(){
+const mm=document.getElementById('minimap');
+const c=document.createElement('canvas');
+c.width=120;c.height=120;
+mm.appendChild(c);
+const ctx=c.getContext('2d');
+function drawMinimap(){
+ctx.clearRect(0,0,120,120);
+ctx.beginPath();
+ctx.arc(60,60,58,0,Math.PI*2);
+ctx.fillStyle='rgba(10,10,11,0.5)';
+ctx.fill();
+ctx.beginPath();
+ctx.arc(60,60,3,0,Math.PI*2);
+ctx.fillStyle='#f5f5f7';
+ctx.fill();
+SYSTEMS.forEach(sys=>{
+const sx=60+sys.pos[0]*1.1;
+const sy=60+sys.pos[2]*1.1;
+ctx.beginPath();
+ctx.arc(sx,sy,sys.isAime?3:2,0,Math.PI*2);
+ctx.fillStyle=sys.isAime?'#e91e8c':'#4a4a55';
+ctx.fill();
+});
+const camAngle=Math.atan2(camera.position.x,camera.position.z);
+ctx.save();
+ctx.translate(60,60);
+ctx.rotate(camAngle);
+ctx.beginPath();
+ctx.moveTo(0,-8);ctx.lineTo(4,6);ctx.lineTo(-4,6);
+ctx.closePath();
+ctx.fillStyle='rgba(255,255,255,0.3)';
+ctx.fill();
+ctx.restore();
+requestAnimationFrame(drawMinimap);
+}
+drawMinimap();
+}
+
+function onPointerMove(e){
+mouse.x=(e.clientX/window.innerWidth)*2-1;
+mouse.y=-(e.clientY/window.innerHeight)*2+1;
+const tooltip=document.getElementById('tooltip');
+tooltip.style.left=(e.clientX+14)+'px';
+tooltip.style.top=(e.clientY-10)+'px';
+}
+
+function onPointerDown(e){
+if(e.button!==0)return;
+raycaster.setFromCamera(mouse,camera);
+const targets=[];
+systemsGroup.traverse(c=>{if(c.isMesh&&c.userData&&c.userData.id)targets.push(c)});
+coreGroup.traverse(c=>{if(c.isMesh&&c.userData&&c.userData.id)targets.push(c)});
+if(systemMeshes['upoint'])targets.push(systemMeshes['upoint']);
+langGroup.traverse(c=>{if(c.isMesh&&c.userData&&c.userData.id)targets.push(c)});
+
+const hits=raycaster.intersectObjects(targets,false);
+if(hits.length>0){
+const obj=hits[0].object;
+selectObject(obj);
+controls.autoRotate=false;
+}else{
+if(!document.getElementById('side-panel').contains(e.target)){
+closePanel();
+}
+}
+}
+
+function selectObject(obj){
+selectedObj=obj;
+const d=obj.userData;
+if(!d||!d.name)return;
+openPanel(d);
+highlightConnections(d.id);
+if(d.hasDepth){
+document.getElementById('depth-nav').classList.add('visible');
+}else{
+document.getElementById('depth-nav').classList.remove('visible');
+}
+}
+
+function openPanel(d){
+const panel=document.getElementById('side-panel');
+document.getElementById('panel-label').textContent=d.category?d.category.toUpperCase():'SYSTEM';
+document.getElementById('panel-title').textContent=d.full||d.name;
+let html='';
+html+='<div class="panel-section"><h4>Description</h4><p>'+(d.desc||'')+'</p></div>';
+html+='<div class="panel-section"><h4>Metadata</h4>';
+html+='<div class="meta-row"><span class="meta-key">ID</span><span class="meta-val">'+(d.id||'—')+'</span></div>';
+html+='<div class="meta-row"><span class="meta-key">Category</span><span class="meta-val">'+(d.category||'—')+'</span></div>';
+if(d.isAime)html+='<div class="meta-row"><span class="meta-key">Nature</span><span class="meta-val">Presence · Not Authority</span></div>';
+if(d.isCore)html+='<div class="meta-row"><span class="meta-key">Nature</span><span class="meta-val">Nucleus · Principle</span></div>';
+if(d.isUniversalPoint)html+='<div class="meta-row"><span class="meta-key">Nature</span><span class="meta-val">Personal · Sovereign</span></div>';
+if(d.hour!==undefined)html+='<div class="meta-row"><span class="meta-key">Hour</span><span class="meta-val">'+String(d.hour).padStart(2,'0')+':00</span></div>';
+if(d.layer!==undefined)html+='<div class="meta-row"><span class="meta-key">Layer</span><span class="meta-val">'+(d.layer+1)+' / 6</span></div>';
+html+='</div>';
+
+if(d.connections&&d.connections.length){
+html+='<div class="panel-section"><h4>Connections</h4><ul class="conn-list">';
+d.connections.forEach(c=>{
+const t=SYSTEMS.find(s=>s.id===c);
+html+='<li><div class="conn-dot'+(t&&t.isAime?' fuchsia':'')+'"></div>'+(t?t.name:c.toUpperCase())+'</li>';
+});
+html+='<li><div class="conn-dot"></div>SOURCE OF TRUTH</li>';
+html+='</ul></div>';
+}
+
+if(d.isAime){
+html+='<div class="panel-section"><h4>AIME Character</h4><p>Fuchsia presence. Companion intelligence. Reads patterns, suggests connections, holds care. Never commands. Never centers itself. AIME orbits the white point — it does not replace it.</p></div>';
+}
+if(d.isCore){
+html+='<div class="panel-section"><h4>Principle</h4><p>One World, One Grid, Many Views. The Source of Truth is architectural minimalism applied to information: a single coherence point enabling plural perspectives.</p></div>';
+}
+if(d.isUniversalPoint){
+html+='<div class="panel-section"><h4>Depth Navigation</h4><p>Use the depth controls to navigate inward: Surface (public face) → Identity (chosen self) → Traces (accumulated history) → Core (irreducible essence). Four layers of personal information architecture.</p></div>';
+}
+if(d.id==='myspace'||(d.name&&d.name.includes('MY SPACE'))){
+html+='<div class="panel-section"><h4>Digital Sampler</h4><p>A 4×4 compositional grid. Collect fragments from editions, arrange personal sequences, transmit selections. My Space is instrument, not container — you play it.</p></div>';
+}
+if(d.id==='editions'){
+html+='<div class="panel-section"><h4>365 Structure</h4><p>Each edition maps 1:1 to a destination point on the sphere. Days are geometric fixtures. The annual cycle is a closed manifold — complete, stable, revisit able.</p></div>';
+}
+
+document.getElementById('panel-body').innerHTML=html;
+panel.classList.add('open');
+}
+
+function closePanel(){
+document.getElementById('side-panel').classList.remove('open');
+selectedObj=null;
+connectionLines.forEach(l=>{
+l.material.opacity=l.userData.isAimeConn?0.12:l.userData.isCore?0.04:0.06;
+});
+document.getElementById('depth-nav').classList.remove('visible');
+}
+
+function highlightConnections(id){
+connectionLines.forEach(l=>{
+const match=l.userData.from===id||l.userData.to===id;
+l.material.opacity=match?(l.userData.isAimeConn?0.35:0.22):(l.userData.isAimeConn?0.04:0.015);
+});
+}
+
+function onKey(e){
+const k=e.key;
+if(k==='Escape'){closePanel();controls.autoRotate=true;return}
+if(k===' '){e.preventDefault();controls.autoRotate=!controls.autoRotate;return}
+if(k==='a'||k==='A'){toggleAudit();return}
+if(k==='r'||k==='R'){resetCamera();return}
+if(k==='g'||k==='G'){toggleGrid();return}
+if(k==='l'||k==='L'){toggleConnections();return}
+const num=parseInt(k);
+if(num>=1&&num<=9){
+const idx=num-1;
+if(idx<SYSTEMS.length){
+const sys=SYSTEMS[idx];
+const mesh=systemMeshes[sys.id];
+if(mesh){
+focusOn(mesh.position||new THREE.Vector3(...sys.pos));
+const target=mesh.isMesh?mesh:mesh.children.find(c=>c.isMesh&&c.userData.id);
+if(target)selectObject(target);
+}
+}
+}
+if(k==='0'){
+focusOn(new THREE.Vector3(0,0,0));
+if(systemMeshes['ust'])selectObject(systemMeshes['ust']);
+}
+}
+
+function focusOn(pos){
+controls.autoRotate=false;
+const start=controls.target.clone();
+const end=pos.clone();
+const camStart=camera.position.clone();
+const offset=camStart.clone().sub(start).normalize().multiplyScalar(25);
+const camEnd=end.clone().add(offset);
+let t=0;
+function tween(){
+t+=0.02;
+if(t>1)t=1;
+const e=1-Math.pow(1-t,3);
+controls.target.lerpVectors(start,end,e);
+camera.position.lerpVectors(camStart,camEnd,e);
+if(t<1)requestAnimationFrame(tween);
+}
+tween();
+}
+
+function resetCamera(){
+controls.autoRotate=true;
+closePanel();
+const start=camera.position.clone();
+const tStart=controls.target.clone();
+const end=new THREE.Vector3(40,30,50);
+const tEnd=new THREE.Vector3(0,0,0);
+let t=0;
+function tween(){
+t+=0.015;
+if(t>1)t=1;
+const e=1-Math.pow(1-t,3);
+camera.position.lerpVectors(start,end,e);
+controls.target.lerpVectors(tStart,tEnd,e);
+if(t<1)requestAnimationFrame(tween);
+}
+tween();
+}
+
+window.toggleAudit=function(){
+isAuditOpen=!isAuditOpen;
+document.getElementById('audit-bar').classList.toggle('visible',isAuditOpen);
+document.getElementById('btn-audit').classList.toggle('active',isAuditOpen);
+if(!isAuditOpen)setAuditMode('all');
+};
+
+window.setAuditMode=function(mode){
+auditMode=mode;
+document.querySelectorAll('.audit-btn').forEach(b=>{
+b.classList.toggle('active',b.dataset.mode===mode);
+});
+systemsGroup.children.forEach(g=>{
+const cat=g.userData.category;
+const show=mode==='all'||cat===mode||(mode==='structure'&&g.userData.isAime);
+g.visible=show;
+});
+connectionLines.forEach(l=>{
+if(mode==='all'){l.visible=showConnections;return}
+const from=SYSTEMS.find(s=>s.id===l.userData.from);
+const to=SYSTEMS.find(s=>s.id===l.userData.to)||{category:'structure'};
+const show=(from&&from.category===mode)||(to&&to.category===mode)||l.userData.isCore;
+l.visible=show&&showConnections;
+});
+grid365Group.visible=mode==='all'||mode==='time';
+langGroup.visible=mode==='all'||mode==='structure';
+};
+
+window.toggleGrid=function(){
+showGrid=!showGrid;
+grid365Group.visible=showGrid;
+document.getElementById('btn-grid').classList.toggle('active',showGrid);
+};
+
+window.toggleConnections=function(){
+showConnections=!showConnections;
+connectionsGroup.visible=showConnections;
+document.getElementById('btn-conn').classList.toggle('active',showConnections);
+};
+
+window.focusAime=function(){
+const aimePos=new THREE.Vector3(0,22,0);
+focusOn(aimePos);
+const aimeSys=SYSTEMS.find(s=>s.isAime);
+if(aimeSys){
+const g=systemMeshes['aime'];
+if(g){
+const mesh=g.children.find(c=>c.isMesh&&c.userData.id==='aime');
+if(mesh)selectObject(mesh);
+}
+}
+document.getElementById('btn-aime').classList.add('active');
+setTimeout(()=>document.getElementById('btn-aime').classList.remove('active'),600);
+};
+
+window.resetCamera=resetCamera;
+
+window.setDepth=function(d){
+currentDepth=d;
+document.querySelectorAll('.depth-btn').forEach(b=>{
+b.classList.toggle('active',parseInt(b.dataset.depth)===d);
+});
+const descs=[
+'Surface — the public-facing layer. What the world sees. Name, presence, ceremonial role.',
+'Identity — chosen self-definition. Preferences, affiliations, values declared and held.',
+'Traces — accumulated history. Editions attended, relations formed, transmissions sent and received.',
+'Core — irreducible essence. The private white point. Accessible only by sovereign will.'
+];
+if(selectedObj&&selectedObj.userData&&selectedObj.userData.isUniversalPoint){
+const d2=Object.assign({},selectedObj.userData);
+d2.desc=descs[d];
+d2.full='Universal Point — Depth '+d+' / 3';
+openPanel(d2);
+}
+};
+
+function onResize(){
+camera.aspect=window.innerWidth/window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth,window.innerHeight);
+}
+
+function animate(){
+requestAnimationFrame(animate);
+const dt=clock.getDelta();
+const t=clock.getElapsedTime();
+animPhase=t;
+controls.update();
+
+if(coreGroup){
+coreGroup.rotation.y=t*0.08;
+coreGroup.rotation.x=Math.sin(t*0.05)*0.05;
+const core=coreGroup.children[0];
+if(core&&core.material){
+core.material.emissiveIntensity=0.3+Math.sin(t*1.5)*0.1;
+}
+}
+
+if(systemsGroup){
+systemsGroup.children.forEach((g,i)=>{
+if(g.userData.isAime){
+g.rotation.y=t*0.2;
+g.rotation.x=Math.sin(t*0.3)*0.1;
+g.position.y=22+Math.sin(t*0.7)*0.4;
+}else{
+g.rotation.y=t*0.1+i;
+g.position.y=g.userData.pos[1]+Math.sin(t*0.5+i*1.3)*0.3;
+}
+});
+}
+
+if(grid365Group){
+grid365Group.rotation.y=t*0.02;
+}
+
+if(aimeGroup){
+aimeGroup.rotation.y=t*0.05;
+const pos=aimeGroup.children[0].geometry.attributes.position;
+for(let i=0;i<pos.count;i++){
+pos.array[i*3+1]+=Math.sin(t+i)*0.002;
+}
+pos.needsUpdate=true;
+}
+
+if(langGroup){
+langGroup.children.forEach((c,i)=>{
+if(c.isMesh&&c.geometry.type==='RingGeometry'){
+c.rotation.z=t*0.05*(i%2===0?1:-1);
+}
+});
+}
+
+if(samplerGroup){
+samplerGroup.children.forEach(c=>{
+if(c.userData&&c.userData.isSamplerCell){
+const pulse=0.7+Math.sin(t*2+c.userData.row+c.userData.col)*0.3;
+if(c.material)c.material.opacity=pulse*0.8;
+}
+});
+}
+
+raycaster.setFromCamera(mouse,camera);
+const targets=[];
+if(systemsGroup)systemsGroup.traverse(c=>{if(c.isMesh&&c.userData&&c.userData.id)targets.push(c)});
+if(coreGroup)coreGroup.traverse(c=>{if(c.isMesh&&c.userData&&c.userData.id)targets.push(c)});
+const hits=raycaster.intersectObjects(targets,false);
+const tooltip=document.getElementById('tooltip');
+if(hits.length>0&&hits[0].object.userData.name){
+const n=hits[0].object.userData.name;
+tooltip.textContent=n;
+tooltip.classList.add('visible');
+document.body.style.cursor='pointer';
+if(hoveredObj!==hits[0].object){
+if(hoveredObj&&hoveredObj.scale)hoveredObj.scale.setScalar(1);
+hoveredObj=hits[0].object;
+if(hoveredObj.parent&&!hoveredObj.userData.isCore){
+hoveredObj.parent.scale.setScalar(1.12);
+}
+}
+}else{
+tooltip.classList.remove('visible');
+document.body.style.cursor='default';
+if(hoveredObj&&hoveredObj.parent){
+hoveredObj.parent.scale.setScalar(1);
+hoveredObj=null;
+}
+}
+
+const aimeLight=scene.getObjectByName('aimeLight');
+if(aimeLight){
+aimeLight.intensity=0.6+Math.sin(t*1.2)*0.3;
+}
+
+renderer.render(scene,camera);
+}
+
+init();
+})();
+</script>
+</body>
+</html>
