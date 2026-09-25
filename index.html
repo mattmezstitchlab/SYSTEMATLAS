@@ -15,6 +15,22 @@
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
 font-family:'IBM Plex Sans',system-ui,sans-serif;font-weight:300;-webkit-font-smoothing:antialiased}
 #canvas-container{position:fixed;inset:0;z-index:0}
+#view-2d-grid{position:fixed;inset:56px 0 48px 0;z-index:2;background:var(--bg);display:none;overflow:auto;padding:28px 32px 34px}
+#view-2d-grid.active{display:block}
+.grid2d-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;max-width:1500px;margin:0 auto 20px}
+.grid2d-head h1{font-size:24px;line-height:1.15;font-weight:300;color:var(--white)}
+.grid2d-head p{margin-top:8px;font:10px/1.5 'IBM Plex Mono',monospace;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.grid2d-stage{max-width:1500px;margin:auto;display:grid;grid-template-columns:repeat(19,minmax(0,1fr));gap:2px}
+.grid2d-cell{position:relative;aspect-ratio:1;border:1px solid rgba(255,255,255,.06);background:#0e0e11;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:.18s}
+.grid2d-cell:hover{border-color:rgba(255,255,255,.35);background:#15151a;transform:translateY(-1px)}
+.grid2d-cell .n{font:8px/1 'IBM Plex Mono',monospace;color:#5f5f69}
+.grid2d-cell .a{position:absolute;inset:4px 4px auto;text-align:left;font:6px/1 'IBM Plex Mono',monospace;color:rgba(233,30,140,.75);letter-spacing:.05em}
+.grid2d-cell .layer{position:absolute;right:4px;bottom:4px;font:6px/1 'IBM Plex Mono',monospace;color:#3f3f48}
+.grid2d-cell.agent{box-shadow:inset 0 0 0 1px rgba(233,30,140,.12)}
+.grid2d-cell.selected{border-color:#f5f5f7;box-shadow:inset 0 0 0 1px #f5f5f7}
+.grid2d-cell:nth-child(19n+1){border-left-color:rgba(255,255,255,.16)}
+.grid2d-cell:nth-child(-n+19){border-top-color:rgba(255,255,255,.16)}
+.grid2d-footer{max-width:1500px;margin:12px auto 0;display:flex;justify-content:space-between;gap:20px;font:9px/1.4 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
 #view-2d{position:fixed;inset:56px 0 48px 0;z-index:2;background:var(--bg);display:block;overflow:auto;padding:28px 32px 34px}
 #view-2d.hidden{display:none}
 .atlas-2d-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;max-width:1500px;margin:0 auto 22px}
@@ -45,6 +61,11 @@ background-size:48px 48px;overflow:hidden}
 .atlas-2d-core:focus{border-color:var(--white)}
 .atlas-2d-footer{max-width:1500px;margin:12px auto 0;display:flex;justify-content:space-between;gap:20px;font:9px/1.4 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
 @media(max-width:900px){
+#view-2d-grid{padding:18px 12px 24px}
+.grid2d-head{align-items:flex-start;flex-direction:column}
+.grid2d-head h1{font-size:19px}
+.grid2d-stage{grid-template-columns:repeat(19,minmax(28px,1fr));min-width:760px}
+.grid2d-footer{flex-direction:column}
 #view-2d{padding:18px 14px 24px}
 .atlas-2d-head{align-items:flex-start;flex-direction:column}
 .atlas-2d-head h1{font-size:19px}
@@ -182,6 +203,21 @@ background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:
     <span>THE 2D MAP IS THE REFERENCE SURFACE. THE 3D MAP IS ITS SPATIAL VIEW.</span>
   </div>
 </div>
+<div id="view-2d-grid" aria-label="365 grid map">
+  <div class="grid2d-head">
+    <div>
+      <div class="atlas-2d-kicker">SYSTEMATLAS · 365 × 365</div>
+      <h1>365 agents · 365 points · one grid.</h1>
+      <p>Every square is fixed. Depth is created by layers, not by moving the source.</p>
+    </div>
+    <div class="atlas-2d-meta"><span>2D = READ</span><span>365 AGENTS</span><span>365 DESTINATIONS</span></div>
+  </div>
+  <div class="grid2d-stage" id="grid2d-stage"></div>
+  <div class="grid2d-footer">
+    <span>POINT → AGENT → LAYERS → RELATIONS → MY SPACE</span>
+    <span>ONE GRID · MANY VIEWS · SOURCE PRESERVED</span>
+  </div>
+</div>
 <div id="hud">
 <div class="top-bar">
 <div class="logo">
@@ -192,8 +228,10 @@ background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:
 </div>
 </div>
 <div class="top-actions">
-<button class="btn active" id="btn-2d" onclick="setView('2d')">2D</button>
-<button class="btn" id="btn-3d" onclick="setView('3d')">3D</button>
+<button class="btn active" id="btn-2d-arch" onclick="setView('2d-arch')">2D ARCH</button>
+<button class="btn" id="btn-2d-grid" onclick="setView('2d-grid')">2D GRID</button>
+<button class="btn" id="btn-3d-radial" onclick="setView('3d-radial')">3D RADIAL</button>
+<button class="btn" id="btn-3d-grid" onclick="setView('3d-grid')">3D GRID</button>
 <button class="btn" id="btn-audit" onclick="toggleAudit()">Audit</button>
 <button class="btn" id="btn-grid" onclick="toggleGrid()">Grid</button>
 <button class="btn" id="btn-conn" onclick="toggleConnections()">Links</button>
@@ -268,11 +306,12 @@ const LANG_LAYERS = [
 
 let scene,camera,renderer,controls,clock;
 let currentView='2d';
-let coreGroup,systemsGroup,grid365Group,connectionsGroup,langGroup,aimeGroup,samplerGroup;
+let coreGroup,systemsGroup,grid365Group,connectionsGroup,langGroup,aimeGroup,samplerGroup,agentRadialGroup,gridSpatialGroup;
 let raycaster,mouse,hoveredObj=null,selectedObj=null;
 let connectionLines=[],systemMeshes={},labelSprites=[];
 let showConnections=true,showGrid=true,auditMode='all',currentDepth=0;
 let animPhase=0,isAuditOpen=false;
+let sceneView='3d-radial';
 const panelData={};
 
 function build2D(){
@@ -342,17 +381,53 @@ function select2D(id){
   openPanel(fake);
 }
 window.setView=function(view){
-  currentView=view;
-  const two=document.getElementById('view-2d');
+  sceneView=view;
+  const arch=document.getElementById('view-2d');
+  const grid2d=document.getElementById('view-2d-grid');
   const three=document.getElementById('canvas-container');
-  two.classList.toggle('hidden',view!=='2d');
-  three.style.display=view==='3d'?'block':'none';
-  document.getElementById('btn-2d').classList.toggle('active',view==='2d');
-  document.getElementById('btn-3d').classList.toggle('active',view==='3d');
-  if(view==='3d'&&renderer){
-    onResize();
+  const is2d=view.startsWith('2d');
+  arch.classList.toggle('hidden',view!=='2d-arch');
+  grid2d.classList.toggle('active',view==='2d-grid');
+  three.style.display=is2d?'none':'block';
+  ['btn-2d-arch','btn-2d-grid','btn-3d-radial','btn-3d-grid'].forEach(id=>{
+    const b=document.getElementById(id); if(b)b.classList.toggle('active',id===({
+      '2d-arch':'btn-2d-arch','2d-grid':'btn-2d-grid','3d-radial':'btn-3d-radial','3d-grid':'btn-3d-grid'
+    }[view]));
+  });
+  if(view==='2d-grid')build2DGrid();
+  if(view==='3d-radial'){
+    agentRadialGroup.visible=true;
+    gridSpatialGroup.visible=false;
+    grid365Group.visible=true;
+    if(controls)controls.autoRotate=true;
   }
+  if(view==='3d-grid'){
+    agentRadialGroup.visible=true;
+    gridSpatialGroup.visible=true;
+    grid365Group.visible=false;
+    if(controls)controls.autoRotate=false;
+  }
+  if(view==='3d-radial'||view==='3d-grid')onResize();
 };
+function build2DGrid(){
+  const stage=document.getElementById('grid2d-stage');
+  if(!stage||stage.dataset.ready)return;
+  stage.dataset.ready='1';
+  for(let i=0;i<365;i++){
+    const cell=document.createElement('button');
+    cell.type='button';
+    cell.className='grid2d-cell agent';
+    cell.innerHTML='<span class="a">A'+String(i+1).padStart(3,'0')+'</span><span class="n">'+String(i+1).padStart(3,'0')+'</span><span class="layer">L0</span>';
+    cell.onclick=()=>openPanel({
+      id:'grid2d-'+String(i+1).padStart(3,'0'),
+      name:'POINT '+String(i+1).padStart(3,'0'),
+      full:'365 Grid Point · '+String(i+1).padStart(3,'0'),
+      desc:'One fixed coordinate shared by the 365 agent layer, destination layer, edition layer and every future semantic layer. The number never moves; only its representations change.',
+      category:'grid',layer:0,agentIndex:i
+    });
+    stage.appendChild(cell);
+  }
+}
 function init(){
 build2D();
 setView('2d');
@@ -389,6 +464,9 @@ setupLights();
 buildCore();
 buildSystems();
 build365Grid();
+buildAgentRadial();
+buildSpatialGrid();
+buildDepthLayers();
 buildConnections();
 buildLanguageLayers();
 buildMySpaceSampler();
@@ -430,7 +508,7 @@ const aimeLight=new THREE.PointLight(0xe91e8c,0.8,35);
 aimeLight.position.set(0,22,0);
 aimeLight.name='aimeLight';
 scene.add(aimeLight);
-const rim=new THREE.PointLight(0xaaaa cc,0.3,60);
+const rim=new THREE.PointLight(0xaaaacc,0.3,60);
 rim.position.set(-30,5,30);
 scene.add(rim);
 }
@@ -568,55 +646,98 @@ return canvas;
 function build365Grid(){
 grid365Group=new THREE.Group();
 grid365Group.name='grid365';
-const golden=Math.PI*(3-Math.sqrt(5));
-const radius=36;
+const radius=25;
 const positions=[];
 const colors=[];
-const colorDest=new THREE.Color(0x3a3a48);
-const colorEdition=new THREE.Color(0x5a5a6a);
-
 for(let i=0;i<365;i++){
-const y=1-(i/364)*2;
-const r=Math.sqrt(1-y*y);
-const theta=golden*i;
-const x=Math.cos(theta)*r;
-const z=Math.sin(theta)*r;
-positions.push(x*radius,y*radius,z*radius);
-const c=i%30===0?colorEdition:colorDest;
-colors.push(c.r,c.g,c.b);
+  const y=1-(i/364)*2;
+  const rr=Math.sqrt(1-y*y);
+  const theta=Math.PI*(3-Math.sqrt(5))*i;
+  positions.push(Math.cos(theta)*rr*radius,y*radius,Math.sin(theta)*rr*radius);
+  const c=i%30===0?new THREE.Color(0x5a5a6a):new THREE.Color(0x3a3a48);
+  colors.push(c.r,c.g,c.b);
 }
-
 const geo=new THREE.BufferGeometry();
 geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
 geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
-const mat=new THREE.PointsMaterial({
-size:0.28,vertexColors:true,transparent:true,opacity:0.7,
-sizeAttenuation:true,depthWrite:false
-});
+const mat=new THREE.PointsMaterial({size:0.24,vertexColors:true,transparent:true,opacity:0.72,sizeAttenuation:true,depthWrite:false});
 const points=new THREE.Points(geo,mat);
-points.userData={id:'destinations',name:'365 DESTINATIONS',full:'365 Destination Sphere',
-desc:'A geometrically stable sphere of 365 fixed points. Each point is a ceremonial destination — place and date fused. Format 1:1 respected. These points do not drift. They are the calendar made spatial.',
-category:'time'};
+points.userData={id:'destinations',name:'365 DESTINATIONS',full:'365 Destination Sphere',desc:'365 fixed geographic points. The same 365 positions can be read as destination, edition, date, place or any other domain without changing their identity.',category:'time'};
 grid365Group.add(points);
-
-const equatorGeo=new THREE.TorusGeometry(radius,0.02,8,128);
-const equatorMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.04});
-const equator=new THREE.Mesh(equatorGeo,equatorMat);
-equator.rotation.x=Math.PI/2;
-grid365Group.add(equator);
-
-const meridianGeo=new THREE.TorusGeometry(radius,0.015,8,128);
-const meridianMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.025});
-for(let m=0;m<3;m++){
-const mer=new THREE.Mesh(meridianGeo,meridianMat);
-mer.rotation.y=(Math.PI/3)*m;
-grid365Group.add(mer);
-}
-
 scene.add(grid365Group);
 systemMeshes['destinations']=points;
 }
 
+function buildAgentRadial(){
+agentRadialGroup=new THREE.Group();
+agentRadialGroup.name='agents365';
+const radius=31;
+for(let i=0;i<365;i++){
+  const angle=(i/365)*Math.PI*2-Math.PI/2;
+  const x=Math.cos(angle)*radius;
+  const z=Math.sin(angle)*radius;
+  const y=2.5+Math.sin(angle*4)*0.35;
+  const geo=new THREE.SphereGeometry(i%30===0?0.13:0.065,6,6);
+  const mat=new THREE.MeshBasicMaterial({color:i%30===0?0xe91e8c:0x7b7b88,transparent:true,opacity:i%30===0?0.9:0.58});
+  const p=new THREE.Mesh(geo,mat);
+  p.position.set(x,y,z);
+  p.userData={id:'agent-'+String(i+1).padStart(3,'0'),name:'AGENT '+String(i+1).padStart(3,'0'),full:'365 Agent · '+String(i+1).padStart(3,'0'),desc:'Temporal entry point for the date. The agent reads sources, places, people, events and relations, then proposes structured connections. It never invents and never replaces the source.',category:'agent',agentIndex:i,layer:0};
+  agentRadialGroup.add(p);
+}
+const ringGeo=new THREE.TorusGeometry(radius,0.018,8,365);
+const ringMat=new THREE.MeshBasicMaterial({color:0xe91e8c,transparent:true,opacity:0.08});
+const ring=new THREE.Mesh(ringGeo,ringMat);
+ring.rotation.x=Math.PI/2;
+agentRadialGroup.add(ring);
+scene.add(agentRadialGroup);
+}
+
+function buildSpatialGrid(){
+gridSpatialGroup=new THREE.Group();
+gridSpatialGroup.name='spatialGrid365';
+const cols=19, rows=20, cell=2.1;
+for(let i=0;i<365;i++){
+  const col=i%cols, row=Math.floor(i/cols);
+  const x=(col-(cols-1)/2)*cell;
+  const z=(row-(rows-1)/2)*cell;
+  const y=0;
+  const geo=new THREE.BoxGeometry(cell*0.9,0.08,cell*0.9);
+  const mat=new THREE.MeshBasicMaterial({color:i%30===0?0x5a5a6a:0x24242b,transparent:true,opacity:0.72});
+  const tile=new THREE.Mesh(geo,mat);
+  tile.position.set(x,y,z);
+  tile.userData={id:'grid-'+String(i+1).padStart(3,'0'),name:'POINT '+String(i+1).padStart(3,'0'),full:'Universal Grid Point · '+String(i+1).padStart(3,'0'),desc:'A fixed square in the universal 365 grid. The point can receive layers: agent, destination, identity, relation, timeline, value, music, archive and transmission.',category:'grid',gridIndex:i,layer:0};
+  gridSpatialGroup.add(tile);
+}
+const frameGeo=new THREE.EdgesGeometry(new THREE.BoxGeometry(cols*cell,0.02,rows*cell));
+const frame=new THREE.LineSegments(frameGeo,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.08}));
+frame.position.y=-0.05;
+gridSpatialGroup.add(frame);
+scene.add(gridSpatialGroup);
+}
+
+function buildDepthLayers(){
+  const layerGroup=new THREE.Group();
+  layerGroup.name='depthLayers';
+  const layers=[
+    {y:0,label:'POINT',color:0xffffff,opacity:.08},
+    {y:2.8,label:'AGENT',color:0xe91e8c,opacity:.07},
+    {y:5.6,label:'RELATIONS',color:0x9b9ba5,opacity:.055},
+    {y:8.4,label:'TIMELINE',color:0x777783,opacity:.045},
+    {y:11.2,label:'TRACE / ARCHIVE',color:0x5f5f69,opacity:.035}
+  ];
+  layers.forEach((l,i)=>{
+    const g=new THREE.Group();
+    const size=40-i*2;
+    const geo=new THREE.PlaneGeometry(size,size);
+    const mat=new THREE.MeshBasicMaterial({color:l.color,transparent:true,opacity:l.opacity,side:THREE.DoubleSide});
+    const plane=new THREE.Mesh(geo,mat);
+    plane.rotation.x=-Math.PI/2;
+    plane.userData={id:'depth-'+i,name:l.label,full:'Depth Layer '+(i+1)+' · '+l.label,desc:'A semantic layer above the same 365 coordinates. Layers add meaning without changing the underlying point.',category:'structure',layer:i};
+    g.add(plane);
+    layerGroup.add(g);
+  });
+  scene.add(layerGroup);
+}
 function buildConnections(){
 connectionsGroup=new THREE.Group();
 connectionsGroup.name='connections';
@@ -1180,7 +1301,19 @@ g.position.y=g.userData.pos[1]+Math.sin(t*0.5+i*1.3)*0.3;
 }
 
 if(grid365Group){
-grid365Group.rotation.y=t*0.02;
+grid365Group.rotation.y=sceneView==='3d-radial'?t*0.02:0;
+}
+if(agentRadialGroup){
+agentRadialGroup.rotation.y=sceneView==='3d-radial'?t*0.02:0;
+}
+if(gridSpatialGroup){
+gridSpatialGroup.rotation.y=0;
+gridSpatialGroup.children.forEach((o,i)=>{
+  if(o.isMesh&&o.userData&&o.userData.gridIndex!==undefined){
+    const pulse=0.72+Math.sin(t*1.4+o.userData.gridIndex*.09)*0.08;
+    if(o.material)o.material.opacity=pulse;
+  }
+});
 }
 
 if(aimeGroup){
