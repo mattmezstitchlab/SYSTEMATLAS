@@ -15,6 +15,46 @@
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
 font-family:'IBM Plex Sans',system-ui,sans-serif;font-weight:300;-webkit-font-smoothing:antialiased}
 #canvas-container{position:fixed;inset:0;z-index:0}
+#view-2d{position:fixed;inset:56px 0 48px 0;z-index:2;background:var(--bg);display:block;overflow:auto;padding:28px 32px 34px}
+#view-2d.hidden{display:none}
+.atlas-2d-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;max-width:1500px;margin:0 auto 22px}
+.atlas-2d-kicker{font:500 9px/1.2 'IBM Plex Mono',monospace;letter-spacing:.22em;color:var(--fuchsia);text-transform:uppercase;margin-bottom:9px}
+.atlas-2d-head h1{font-size:24px;line-height:1.15;font-weight:300;letter-spacing:-.02em;color:var(--white)}
+.atlas-2d-meta{display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-end;font:9px/1.2 'IBM Plex Mono',monospace;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.atlas-2d-stage{position:relative;max-width:1500px;height:calc(100vh - 190px);min-height:560px;margin:0 auto;border:1px solid var(--border);background:
+linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+background-size:48px 48px;overflow:hidden}
+#atlas-2d-links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.atlas-link{fill:none;stroke:rgba(255,255,255,.09);stroke-width:1}
+.atlas-link.aime{stroke:rgba(233,30,140,.3)}
+.atlas-link.active{stroke:rgba(255,255,255,.55);stroke-width:1.5}
+#atlas-2d-nodes{position:absolute;inset:0}
+.atlas-node{position:absolute;transform:translate(-50%,-50%);min-width:128px;max-width:190px;padding:10px 12px;border:1px solid var(--border);background:rgba(12,12,14,.94);cursor:pointer;transition:transform .25s var(--ease),border-color .25s,background .25s,opacity .25s;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.atlas-node:hover{transform:translate(-50%,-50%) scale(1.04);border-color:var(--dim);background:#111115}
+.atlas-node.selected{border-color:var(--white);box-shadow:0 0 0 1px rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.25)}
+.atlas-node.aime{border-color:rgba(233,30,140,.42)}
+.atlas-node.dim{opacity:.18}
+.atlas-node .node-id{font:9px/1 'IBM Plex Mono',monospace;color:var(--dim);letter-spacing:.12em}
+.atlas-node .node-name{margin-top:7px;font-size:12px;font-weight:500;letter-spacing:.08em;color:var(--white)}
+.atlas-node .node-category{margin-top:5px;font:9px/1.2 'IBM Plex Mono',monospace;color:var(--muted);text-transform:uppercase}
+.atlas-node .node-status{display:inline-flex;margin-top:8px;padding:3px 5px;border:1px solid var(--border);font:8px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.atlas-node.aime .node-status{color:var(--fuchsia);border-color:rgba(233,30,140,.3)}
+.atlas-2d-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:148px;height:148px;border:1px solid rgba(255,255,255,.24);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;background:rgba(245,245,247,.045);backdrop-filter:blur(8px);font:500 8px/1.45 'IBM Plex Mono',monospace;letter-spacing:.13em;color:var(--white);outline:none}
+.atlas-2d-core .core-dot{width:18px;height:18px;border-radius:50%;background:var(--white);box-shadow:0 0 18px rgba(255,255,255,.25)}
+.atlas-2d-core:focus{border-color:var(--white)}
+.atlas-2d-footer{max-width:1500px;margin:12px auto 0;display:flex;justify-content:space-between;gap:20px;font:9px/1.4 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+@media(max-width:900px){
+#view-2d{padding:18px 14px 24px}
+.atlas-2d-head{align-items:flex-start;flex-direction:column}
+.atlas-2d-head h1{font-size:19px}
+.atlas-2d-stage{height:calc(100vh - 230px);min-height:620px;overflow:auto}
+#atlas-2d-links{min-width:900px}
+#atlas-2d-nodes{min-width:900px}
+.atlas-2d-footer{flex-direction:column}
+.atlas-node{min-width:112px;padding:8px 9px}
+.atlas-node .node-name{font-size:10px}
+}
 canvas{display:block;width:100%;height:100%}
 #hud{position:fixed;inset:0;z-index:10;pointer-events:none}
 #hud>*{pointer-events:auto}
@@ -117,6 +157,31 @@ background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:
 <body>
 <div id="loader"><div class="loader-mark"></div><div class="loader-text">Initializing Architecture</div></div>
 <div id="canvas-container"></div>
+<div id="view-2d" aria-label="2D architecture map">
+  <div class="atlas-2d-head">
+    <div>
+      <div class="atlas-2d-kicker">SYSTEMATLAS · ARCHITECTURE</div>
+      <h1>One system. One source of truth. Many views.</h1>
+    </div>
+    <div class="atlas-2d-meta">
+      <span>2D = STRUCTURE</span>
+      <span>3D = EXPLORATION</span>
+      <span id="atlas-2d-count">—</span>
+    </div>
+  </div>
+  <div class="atlas-2d-stage" id="atlas-2d-stage">
+    <svg id="atlas-2d-links" aria-hidden="true"></svg>
+    <div id="atlas-2d-nodes"></div>
+    <div class="atlas-2d-core" id="atlas-2d-core" tabindex="0">
+      <span class="core-dot"></span>
+      <span>UNIVERSAL<br>SOURCE OF TRUTH</span>
+    </div>
+  </div>
+  <div class="atlas-2d-footer">
+    <span>CLICK A NODE TO INSPECT · LINES = DECLARED RELATIONS</span>
+    <span>THE 2D MAP IS THE REFERENCE SURFACE. THE 3D MAP IS ITS SPATIAL VIEW.</span>
+  </div>
+</div>
 <div id="hud">
 <div class="top-bar">
 <div class="logo">
@@ -127,6 +192,8 @@ background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:
 </div>
 </div>
 <div class="top-actions">
+<button class="btn active" id="btn-2d" onclick="setView('2d')">2D</button>
+<button class="btn" id="btn-3d" onclick="setView('3d')">3D</button>
 <button class="btn" id="btn-audit" onclick="toggleAudit()">Audit</button>
 <button class="btn" id="btn-grid" onclick="toggleGrid()">Grid</button>
 <button class="btn" id="btn-conn" onclick="toggleConnections()">Links</button>
@@ -200,6 +267,7 @@ const LANG_LAYERS = [
 ];
 
 let scene,camera,renderer,controls,clock;
+let currentView='2d';
 let coreGroup,systemsGroup,grid365Group,connectionsGroup,langGroup,aimeGroup,samplerGroup;
 let raycaster,mouse,hoveredObj=null,selectedObj=null;
 let connectionLines=[],systemMeshes={},labelSprites=[];
@@ -207,7 +275,87 @@ let showConnections=true,showGrid=true,auditMode='all',currentDepth=0;
 let animPhase=0,isAuditOpen=false;
 const panelData={};
 
+function build2D(){
+  const stage=document.getElementById('atlas-2d-stage');
+  const nodes=document.getElementById('atlas-2d-nodes');
+  const links=document.getElementById('atlas-2d-links');
+  const count=document.getElementById('atlas-2d-count');
+  if(!stage||!nodes||!links)return;
+  count.textContent=SYSTEMS.length+' SYSTEM NODES';
+  nodes.innerHTML='';
+  links.innerHTML='';
+  const positions={};
+  const cx=50,cy=50;
+  SYSTEMS.forEach(sys=>{
+    const x=50+(sys.pos[0]/28)*39;
+    const y=50-(sys.pos[2]/28)*36;
+    positions[sys.id]={x,y};
+    const el=document.createElement('button');
+    el.type='button';
+    el.className='atlas-node'+(sys.isAime?' aime':'');
+    el.style.left=x+'%';
+    el.style.top=y+'%';
+    el.dataset.id=sys.id;
+    el.innerHTML='<span class="node-id">'+sys.id.toUpperCase()+'</span><div class="node-name">'+sys.name+'</div><div class="node-category">'+sys.category+'</div><span class="node-status">ARCHITECTURE</span>';
+    el.addEventListener('click',()=>select2D(sys.id));
+    nodes.appendChild(el);
+  });
+  const svgNS='http://www.w3.org/2000/svg';
+  const core={x:50,y:50};
+  const edgePairs=[];
+  SYSTEMS.forEach(sys=>{
+    (sys.connections||[]).forEach(to=>{
+      if(SYSTEMS.some(s=>s.id===to))edgePairs.push([sys.id,to]);
+    });
+    edgePairs.push([sys.id,'__core']);
+  });
+  const seen=new Set();
+  edgePairs.forEach(([a,b])=>{
+    const key=[a,b].sort().join('|');
+    if(seen.has(key))return;
+    seen.add(key);
+    const p=positions[a]; const q=b==='__core'?core:positions[b];
+    if(!p||!q)return;
+    const line=document.createElementNS(svgNS,'line');
+    line.setAttribute('x1',p.x+'%'); line.setAttribute('y1',p.y+'%');
+    line.setAttribute('x2',q.x+'%'); line.setAttribute('y2',q.y+'%');
+    line.classList.add('atlas-link');
+    if((SYSTEMS.find(s=>s.id===a)||{}).isAime)line.classList.add('aime');
+    line.dataset.from=a; line.dataset.to=b;
+    links.appendChild(line);
+  });
+  document.getElementById('atlas-2d-core').onclick=()=>openPanel({id:'ust',name:'UNIVERSAL SOURCE OF TRUTH',full:'Universal Source of Truth',desc:'The white nucleus. The single coherence point from which all systems derive addressability. The 2D map is a readable projection of this architecture.',category:'structure',isCore:true});
+}
+function select2D(id){
+  const sys=SYSTEMS.find(s=>s.id===id);
+  if(!sys)return;
+  document.querySelectorAll('.atlas-node').forEach(n=>n.classList.toggle('selected',n.dataset.id===id));
+  document.querySelectorAll('.atlas-link').forEach(l=>{
+    const active=l.dataset.from===id||l.dataset.to===id;
+    l.classList.toggle('active',active);
+    l.style.opacity=active?'1':'.45';
+  });
+  const fake={
+    ...sys,
+    connections:sys.connections
+  };
+  openPanel(fake);
+}
+window.setView=function(view){
+  currentView=view;
+  const two=document.getElementById('view-2d');
+  const three=document.getElementById('canvas-container');
+  two.classList.toggle('hidden',view!=='2d');
+  three.style.display=view==='3d'?'block':'none';
+  document.getElementById('btn-2d').classList.toggle('active',view==='2d');
+  document.getElementById('btn-3d').classList.toggle('active',view==='3d');
+  if(view==='3d'&&renderer){
+    onResize();
+  }
+};
 function init(){
+build2D();
+setView('2d');
 const container=document.getElementById('canvas-container');
 clock=new THREE.Clock();
 scene=new THREE.Scene();
@@ -255,6 +403,10 @@ renderer.domElement.addEventListener('pointermove',onPointerMove);
 renderer.domElement.addEventListener('pointerdown',onPointerDown);
 window.addEventListener('keydown',onKey);
 document.getElementById('side-panel').addEventListener('click',e=>e.stopPropagation());
+window.addEventListener('keydown',e=>{
+  if(e.key==='2')setView('2d');
+  if(e.key==='3')setView('3d');
+});
 
 setTimeout(()=>{
 document.getElementById('loader').classList.add('done');
