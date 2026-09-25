@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>WWC + AIME — System Architecture Map</title>
+<title>SYSTEMATLAS — Architecture du mariage</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -104,7 +104,7 @@ display:flex;flex-direction:column;overflow:hidden}
 .panel-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;
 text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .panel-title{font-size:18px;font-weight:400;letter-spacing:0.04em;color:var(--white);line-height:1.3}
-.panel-close{position:absolute;top:20px;right:20px;width:28px;height:28px;border:1px solid var(--border);
+.panel-close{position:absolute;z-index:30;pointer-events:auto;top:20px;right:20px;width:28px;height:28px;border:1px solid var(--border);
 background:transparent;color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;
 justify-content:center;border-radius:2px;transition:all 0.2s}
 .panel-close:hover{color:var(--white);border-color:var(--dim)}
@@ -223,8 +223,8 @@ background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:
 <div class="logo">
 <div class="logo-mark"></div>
 <div>
-<div class="logo-text">World Wedding Center</div>
-<div class="logo-sub">System Architecture + AIME</div>
+<div class="logo-text">SYSTEMATLAS</div>
+<div class="logo-sub">Architecture mariage · AIME</div>
 </div>
 </div>
 <div class="top-actions">
@@ -236,7 +236,7 @@ background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:
 <button class="btn" id="btn-grid" onclick="toggleGrid()">Grid</button>
 <button class="btn" id="btn-conn" onclick="toggleConnections()">Links</button>
 <button class="btn btn-fuchsia" id="btn-aime" onclick="focusAime()">AIME</button>
-<button class="btn" id="btn-reset" onclick="resetCamera()">Reset</button>
+<button class="btn" id="btn-magazine" onclick="location.href='mariage.html'">MAGAZINE</button><button class="btn" id="btn-reset" onclick="resetCamera()">RÉINITIALISER</button>
 </div>
 </div>
 <div id="audit-bar">
@@ -261,7 +261,7 @@ background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:
 </div>
 <div id="minimap"></div>
 <div id="side-panel">
-<button class="panel-close" onclick="closePanel()">&#x2715;</button>
+<button class="panel-close" id="panel-close" type="button" aria-label="Fermer">&#x2715;</button>
 <div class="panel-header">
 <div class="panel-label" id="panel-label">System</div>
 <div class="panel-title" id="panel-title">—</div>
@@ -270,7 +270,7 @@ background:rgba(11,11,13,0.7);border-radius:50%;overflow:hidden;backdrop-filter:
 </div>
 <div id="tooltip"></div>
 <div id="bottom-bar">
-<div class="tagline"><em>One World</em>&nbsp;&nbsp;·&nbsp;&nbsp;<em>One Grid</em>&nbsp;&nbsp;·&nbsp;&nbsp;<em>Many Views</em></div>
+<div class="tagline"><em>UN MONDE</em>&nbsp;&nbsp;·&nbsp;&nbsp;<em>UNE GRILLE</em>&nbsp;&nbsp;·&nbsp;&nbsp;<em>PLUSIEURS VUES</em></div>
 <div class="controls-hint">DRAG orbit · SCROLL zoom · RIGHT-DRAG pan · CLICK inspect · Keys 1-9 focus</div>
 </div>
 </div>
@@ -1107,6 +1107,7 @@ html+='<div class="panel-section"><h4>365 Structure</h4><p>Each edition maps 1:1
 document.getElementById('panel-body').innerHTML=html;
 panel.classList.add('open');
 }
+document.getElementById('panel-close').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();closePanel();});
 
 function closePanel(){
 document.getElementById('side-panel').classList.remove('open');
